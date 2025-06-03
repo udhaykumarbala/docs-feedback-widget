@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Feedback Admin Dashboard</title>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 30px;
+    }
+    .filters {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .filter-group {
+      flex: 1;
+      min-width: 200px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 500;
+      color: #666;
+    }
+    input, select {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    .feedback-card {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .feedback-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 15px;
+    }
+    .user-info {
+      font-weight: 500;
+      color: #0066cc;
+    }
+    .timestamp {
+      color: #666;
+      font-size: 0.9rem;
+    }
+    .page-url {
+      font-size: 0.9rem;
+      color: #666;
+      margin-bottom: 10px;
+    }
+    .selected-text {
+      background: #f5f5f5;
+      padding: 10px;
+      border-left: 3px solid #0066cc;
+      margin-bottom: 10px;
+      font-style: italic;
+    }
+    .comment {
+      color: #333;
+      line-height: 1.5;
+    }
+    .actions {
+      margin-top: 15px;
+      display: flex;
+      gap: 10px;
+    }
+    button {
+      padding: 6px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background: white;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    button:hover {
+      background: #f5f5f5;
+    }
+    .resolved {
+      opacity: 0.6;
+    }
+    .resolved .selected-text {
+      border-left-color: #28a745;
+    }
+    .stats {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      display: flex;
+      gap: 40px;
+    }
+    .stat {
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #0066cc;
+    }
+    .stat-label {
+      color: #666;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Documentation Feedback Dashboard</h1>
+    
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-value" id="totalComments">0</div>
+        <div class="stat-label">Total Comments</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" id="uniqueUsers">0</div>
+        <div class="stat-label">Unique Users</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" id="pagesWithFeedback">0</div>
+        <div class="stat-label">Pages with Feedback</div>
+      </div>
+    </div>
+
+    <div class="filters">
+      <div class="filter-group">
+        <label>Filter by User</label>
+        <input type="text" id="userFilter" placeholder="@telegram_username">
+      </div>
+      <div class="filter-group">
+        <label>Filter by Page</label>
+        <input type="text" id="pageFilter" placeholder="URL or page title">
+      </div>
+      <div class="filter-group">
+        <label>Status</label>
+        <select id="statusFilter">
+          <option value="all">All</option>
+          <option value="pending">Pending</option>
+          <option value="resolved">Resolved</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="feedbackList"></div>
+  </div>
+
+  <script>
+    // Initialize Supabase - replace with your credentials
+    const SUPABASE_URL = prompt('Enter your Supabase URL:');
+    const SUPABASE_ANON_KEY = prompt('Enter your Supabase Anon Key:');
+    
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    
+    let allComments = [];
+
+    async function loadComments() {
+      const { data, error } = await supabase
+        .from('feedback_comments')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Error loading comments:', error);
+        return;
+      }
+      
+      allComments = data || [];
+      updateStats();
+      renderComments();
+    }
+
+    function updateStats() {
+      document.getElementById('totalComments').textContent = allComments.length;
+      
+      const uniqueUsers = new Set(allComments.map(c => c.telegram_name)).size;
+      document.getElementById('uniqueUsers').textContent = uniqueUsers;
+      
+      const pagesWithFeedback = new Set(allComments.map(c => c.page_url)).size;
+      document.getElementById('pagesWithFeedback').textContent = pagesWithFeedback;
+    }
+
+    function renderComments() {
+      const userFilter = document.getElementById('userFilter').value.toLowerCase();
+      const pageFilter = document.getElementById('pageFilter').value.toLowerCase();
+      const statusFilter = document.getElementById('statusFilter').value;
+      
+      const filtered = allComments.filter(comment => {
+        if (userFilter && !comment.telegram_name.toLowerCase().includes(userFilter)) return false;
+        if (pageFilter && !comment.page_url.toLowerCase().includes(pageFilter)) return false;
+        if (statusFilter !== 'all') {
+          if (statusFilter === 'pending' && comment.resolved) return false;
+          if (statusFilter === 'resolved' && !comment.resolved) return false;
+        }
+        return true;
+      });
+      
+      const feedbackList = document.getElementById('feedbackList');
+      feedbackList.innerHTML = filtered.map(comment => `
+        <div class="feedback-card ${comment.resolved ? 'resolved' : ''}" data-id="${comment.id}">
+          <div class="feedback-header">
+            <span class="user-info">${comment.telegram_name}</span>
+            <span class="timestamp">${new Date(comment.created_at).toLocaleString()}</span>
+          </div>
+          <div class="page-url">${comment.page_url}</div>
+          <div class="selected-text">"${comment.selected_text}"</div>
+          <div class="comment">${comment.comment}</div>
+          <div class="actions">
+            <button onclick="toggleResolved('${comment.id}', ${!comment.resolved})">
+              ${comment.resolved ? 'Mark as Pending' : 'Mark as Resolved'}
+            </button>
+            <button onclick="window.open('${comment.page_url}', '_blank')">View Page</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function toggleResolved(id, resolved) {
+      const { error } = await supabase
+        .from('feedback_comments')
+        .update({ resolved })
+        .eq('id', id);
+      
+      if (!error) {
+        loadComments();
+      }
+    }
+
+    // Add event listeners
+    document.getElementById('userFilter').addEventListener('input', renderComments);
+    document.getElementById('pageFilter').addEventListener('input', renderComments);
+    document.getElementById('statusFilter').addEventListener('change', renderComments);
+
+    // Load comments on page load
+    loadComments();
+  </script>
+</body>
+</html>

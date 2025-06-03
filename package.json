@@ -1,0 +1,26 @@
+{
+  "name": "docs-feedback-widget",
+  "version": "1.0.0",
+  "main": "dist/widget.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "Lightweight feedback widget for Docusaurus documentation",
+  "devDependencies": {
+    "@preact/preset-vite": "^2.10.1",
+    "@types/node": "^20.0.0",
+    "@vitejs/plugin-react": "^4.0.0",
+    "terser": "^5.40.0",
+    "typescript": "^5.0.0",
+    "vite": "^5.0.0"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
+    "preact": "^10.19.0"
+  }
+}
