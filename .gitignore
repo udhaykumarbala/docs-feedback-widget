@@ -104,7 +104,7 @@ build/
 public/build/
 
 # Vite build outputs
-dist/
+
 .vite/
 stats.html
 
@@ -112,7 +112,7 @@ stats.html
 .vuepress/dist
 
 # Astro build outputs
-dist/
+
 .astro/
 
 # mkcert locally-trusted development certificates
